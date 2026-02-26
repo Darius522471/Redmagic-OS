@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>RedMagic 11 AIR</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --red: #FF0000;
+    --red-dark: #CC0000;
+    --red-glow: rgba(255,0,0,0.6);
+    --cyan: #00FFFF;
+    --cyan-glow: rgba(0,255,255,0.5);
+    --bg: #050505;
+    --panel: rgba(255,255,255,0.04);
+    --border: rgba(255,0,0,0.25);
+    --text: #FFFFFF;
+    --subtext: rgba(255,255,255,0.5);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--text);
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    user-select: none;
+  }
+
+  /* ===== PHYSICAL SIDE BUTTONS ===== */
+  .side-btn {
+    position: fixed;
+    z-index: 999;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: filter 0.1s, transform 0.1s;
+  }
+
+  /* Volume button - left side */
+  .btn-volume {
+    left: -4px;
+    top: 38%;
+    width: 5px;
+    height: 52px;
+    background: linear-gradient(180deg, #2a2a2a, #1a1a1a, #2a2a2a);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-left: none;
+    border-radius: 0 3px 3px 0;
+    box-shadow: 2px 0 6px rgba(0,0,0,0.5);
+  }
+  .btn-volume:active {
+    transform: translateX(2px);
+    filter: brightness(1.4);
+  }
+
+  /* Power button - right side */
+  .btn-power {
+    right: -4px;
+    top: 33%;
+    width: 5px;
+    height: 44px;
+    background: linear-gradient(180deg, #330000, #220000, #330000);
+    border: 1px solid rgba(255,0,0,0.3);
+    border-right: none;
+    border-radius: 3px 0 0 3px;
+    box-shadow: -2px 0 8px rgba(255,0,0,0.25);
+  }
+  .btn-power:active {
+    transform: translateX(-2px);
+    filter: brightness(1.6);
+    box-shadow: -2px 0 14px rgba(255,0,0,0.5);
+  }
+
+  /* Restart overlay */
+  #restart-menu {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(12px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0;
+    animation: fadeInOverlay 0.2s ease;
+  }
+  #restart-menu.active { display: flex; }
+
+  @keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .restart-panel {
+    background: rgba(20,0,0,0.9);
+    border: 1px solid rgba(255,0,0,0.3);
+    border-radius: 20px;
+    padding: 28px 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    box-shadow: 0 0 40px rgba(255,0,0,0.2);
+    min-width: 220px;
+  }
+
+  .restart-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+  }
+
+  .restart-icon {
+    font-size: 44px;
+    animation: spinOnce 0.6s ease;
+  }
+
+  @keyframes spinOnce {
+    from { transform: rotate(-180deg); opacity: 0; }
+    to { transform: rotate(0deg); opacity: 1; }
+  }
+
+  .restart-btn {
+    background: var(--red);
+    border: none;
+    border-radius: 12px;
+    padding: 12px 32px;
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: white;
+    cursor: pointer;
+    width: 100%;
+    box-shadow: 0 0 16px rgba(255,0,0,0.4);
+    transition: all 0.15s;
+  }
+  .restart-btn:active { transform: scale(0.96); background: var(--red-dark); }
+
+  .restart-cancel {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 10px 32px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.15s;
+  }
+  .restart-cancel:active { background: rgba(255,255,255,0.12); color: white; }
+
+  /* ===== SCREENS ===== */
+  .screen {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    flex-direction: column;
+  }
+  .screen.active { display: flex; }
+
+  /* ===== BOOT ANIMATION ===== */
+  #boot {
+    background: #000;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .boot-device-label {
+    position: absolute;
+    top: 40px;
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    letter-spacing: 6px;
+    color: rgba(255,255,255,0.3);
+    opacity: 0;
+    animation: fadeInLabel 0.5s ease 0.3s forwards;
+  }
+
+  @keyframes fadeInLabel { to { opacity: 1; } }
+
+  .boot-logo-wrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .boot-logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 52px;
+    font-weight: 900;
+    color: var(--red);
+    letter-spacing: 4px;
+    text-shadow: 0 0 20px var(--red-glow), 0 0 60px var(--red-glow);
+    animation: glitch 3s steps(1) forwards;
+    position: relative;
+  }
+
+  .boot-logo::before, .boot-logo::after {
+    content: 'RedMagic';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+  }
+  .boot-logo::before {
+    color: var(--cyan);
+    animation: glitchBefore 3s steps(1) forwards;
+    clip-path: polygon(0 20%, 100% 20%, 100% 40%, 0 40%);
+  }
+  .boot-logo::after {
+    color: #FF0080;
+    animation: glitchAfter 3s steps(1) forwards;
+    clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%);
+  }
+
+  @keyframes glitch {
+    0%   { transform: translate(0); opacity: 0; }
+    5%   { opacity: 1; transform: translate(-4px, 0); filter: hue-rotate(0deg); }
+    10%  { transform: translate(4px, -2px); filter: hue-rotate(180deg); }
+    15%  { transform: translate(-2px, 2px); filter: hue-rotate(0deg); }
+    20%  { transform: translate(0); }
+    25%  { transform: translate(6px, 0); opacity: 0.7; }
+    30%  { transform: translate(-6px, 0); opacity: 1; }
+    35%  { transform: translate(0); }
+    40%  { transform: translate(3px, -3px); }
+    45%  { transform: translate(-3px, 3px); }
+    50%  { transform: translate(0); filter: none; }
+    100% { transform: translate(0); opacity: 1; }
+  }
+
+  @keyframes glitchBefore {
+    0%   { opacity: 0; transform: translate(0); }
+    5%   { opacity: 0.8; transform: translate(-8px, 0); }
+    10%  { opacity: 0; }
+    25%  { opacity: 0.6; transform: translate(8px, 0); }
+    30%  { opacity: 0; }
+    45%  { opacity: 0.4; transform: translate(-4px, 0); }
+    50%  { opacity: 0; }
+    100% { opacity: 0; }
+  }
+
+  @keyframes glitchAfter {
+    0%   { opacity: 0; transform: translate(0); }
+    10%  { opacity: 0.8; transform: translate(6px, 0); }
+    15%  { opacity: 0; }
+    30%  { opacity: 0.5; transform: translate(-6px, 0); }
+    35%  { opacity: 0; }
+    100% { opacity: 0; }
+  }
+
+  .boot-wordmark {
+    font-family: 'Orbitron', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 12px;
+    color: white;
+    text-shadow: 0 0 10px rgba(255,255,255,0.3);
+    opacity: 0;
+    transform: translateY(30px);
+    animation: shadowSpawn 1s cubic-bezier(0.16, 1, 0.3, 1) 1.2s forwards;
+  }
+
+  @keyframes shadowSpawn {
+    0%   { opacity: 0; transform: translateY(30px); filter: blur(20px); color: #000; text-shadow: none; }
+    40%  { opacity: 0.3; filter: blur(8px); color: #333; }
+    70%  { opacity: 0.8; filter: blur(2px); color: #aaa; }
+    100% { opacity: 1; transform: translateY(0); filter: blur(0); color: white; text-shadow: 0 0 20px rgba(255,255,255,0.4); }
+  }
+
+  .boot-bar-wrap {
+    position: absolute;
+    bottom: 80px;
+    width: 200px;
+    height: 2px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    opacity: 0;
+    animation: fadeInLabel 0.3s ease 2s forwards;
+  }
+
+  .boot-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--red), var(--cyan));
+    border-radius: 2px;
+    width: 0%;
+    animation: loadBar 1.8s ease 2.1s forwards;
+    box-shadow: 0 0 10px var(--red-glow);
+  }
+
+  @keyframes loadBar { to { width: 100%; } }
+
+  /* ===== LOCKSCREEN ===== */
+  #lockscreen {
+    background: linear-gradient(135deg, #0a0005 0%, #050010 40%, #0a0000 100%);
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ls-bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(255,0,0,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,0,0,0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: gridMove 8s linear infinite;
+  }
+
+  @keyframes gridMove {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(40px); }
+  }
+
+  .ls-glow-orb {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(255,0,0,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: pulse 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+    50% { opacity: 1; transform: translateX(-50%) scale(1.1); }
+  }
+
+  .ls-device-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 5px;
+    color: rgba(255,255,255,0.4);
+    margin-top: 50px;
+    z-index: 1;
+    text-transform: uppercase;
+  }
+
+  .ls-time {
+    font-family: 'Orbitron', monospace;
+    font-size: 72px;
+    font-weight: 900;
+    color: white;
+    text-shadow: 0 0 30px rgba(255,255,255,0.3);
+    z-index: 1;
+    margin-top: 60px;
+    line-height: 1;
+    letter-spacing: -2px;
+  }
+
+  .ls-date {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px;
+    color: rgba(255,255,255,0.6);
+    letter-spacing: 3px;
+    z-index: 1;
+    margin-top: 8px;
+    text-transform: uppercase;
+  }
+
+  .ls-notifications {
+    z-index: 1;
+    width: 85%;
+    max-width: 340px;
+    margin-top: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .ls-notif {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    backdrop-filter: blur(10px);
+  }
+
+  .ls-notif-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .ls-notif-text { flex: 1; }
+  .ls-notif-title { font-size: 13px; font-weight: 600; color: white; }
+  .ls-notif-body { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 1px; }
+
+  .ls-unlock-hint {
+    position: absolute;
+    bottom: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    z-index: 1;
+    cursor: pointer;
+    animation: bounceHint 2s ease-in-out infinite;
+  }
+
+  @keyframes bounceHint {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  .ls-unlock-icon {
+    width: 48px;
+    height: 48px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+
+  .ls-unlock-text {
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.5);
+    font-family: 'Rajdhani', sans-serif;
+  }
+
+  /* ===== HOME SCREEN ===== */
+  #homescreen {
+    background: linear-gradient(160deg, #080008 0%, #030008 50%, #080000 100%);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .hs-bg-effect {
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at 20% 80%, rgba(255,0,0,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(0,100,255,0.05) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  /* Status Bar */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px 6px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: rgba(255,255,255,0.8);
+    z-index: 10;
+    flex-shrink: 0;
+  }
+
+  .status-bar .device-model {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--red);
+    text-shadow: 0 0 8px var(--red-glow);
+  }
+
+  .status-icons {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 11px;
+  }
+
+  /* Widget area */
+  .hs-time-widget {
+    padding: 20px 20px 0;
+    z-index: 1;
+    flex-shrink: 0;
+  }
+
+  .hs-time {
+    font-family: 'Orbitron', monospace;
+    font-size: 48px;
+    font-weight: 900;
+    color: white;
+    line-height: 1;
+    text-shadow: 0 0 20px rgba(255,255,255,0.2);
+  }
+
+  .hs-date {
+    font-size: 14px;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 2px;
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+
+  /* Red accent line */
+  .hs-accent-line {
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--red), transparent);
+    margin: 12px 20px;
+    border-radius: 2px;
+    box-shadow: 0 0 8px var(--red-glow);
+  }
+
+  /* App Grid */
+  .app-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    padding: 10px 20px;
+    overflow-y: auto;
+    flex: 1;
+    z-index: 1;
+  }
+
+  .app-grid::-webkit-scrollbar { display: none; }
+
+  .app-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+  }
+
+  .app-icon:active { transform: scale(0.9); }
+
+  .app-icon-img {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease;
+  }
+
+  .app-icon:hover .app-icon-img {
+    box-shadow: 0 0 15px rgba(255,0,0,0.5);
+  }
+
+  .app-icon-img::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%);
+    border-radius: 16px;
+    pointer-events: none;
+  }
+
+  .app-icon-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.8);
+    text-align: center;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  /* Dock */
+  .hs-dock {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 12px 30px 24px;
+    background: rgba(255,255,255,0.04);
+    border-top: 1px solid rgba(255,0,0,0.15);
+    backdrop-filter: blur(10px);
+    z-index: 10;
+    flex-shrink: 0;
+  }
+
+  .dock-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  .dock-icon:active { transform: scale(0.85); }
+
+  .dock-icon-img {
+    width: 52px;
+    height: 52px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .dock-icon-img::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%);
+    border-radius: 15px;
+    pointer-events: none;
+  }
+
+  /* ===== APP WINDOWS ===== */
+  #app-window {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+    animation: slideUp 0.3s cubic-bezier(0.16,1,0.3,1);
+  }
+
+  #app-window.active { display: flex; }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes slideDown {
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(100%); opacity: 0; }
+  }
+
+  .app-window-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: rgba(0,0,0,0.9);
+    border-bottom: 1px solid rgba(255,0,0,0.2);
+    flex-shrink: 0;
+  }
+
+  .app-back-btn {
+    width: 36px;
+    height: 36px;
+    background: rgba(255,0,0,0.15);
+    border: 1px solid rgba(255,0,0,0.3);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.15s;
+  }
+  .app-back-btn:active { background: rgba(255,0,0,0.3); }
+
+  .app-window-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: white;
+  }
+
+  .app-window-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .app-window-content::-webkit-scrollbar { display: none; }
+
+  /* ===== CALCULATOR APP ===== */
+  .calc-display {
+    background: #0a0a0a;
+    padding: 24px 20px 16px;
+    text-align: right;
+    border-bottom: 1px solid rgba(255,0,0,0.1);
+  }
+  .calc-expression {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 16px;
+    color: rgba(255,255,255,0.4);
+    min-height: 20px;
+  }
+  .calc-result {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 48px;
+    color: white;
+    margin-top: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .calc-btns {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: rgba(255,255,255,0.05);
+    flex: 1;
+  }
+  .calc-btn {
+    background: #111;
+    padding: 20px 10px;
+    text-align: center;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 22px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.1s;
+    color: white;
+    border: none;
+    outline: none;
+  }
+  .calc-btn:active { background: #222; }
+  .calc-btn.op { color: var(--red); font-size: 24px; }
+  .calc-btn.action { background: #1a0000; color: var(--red); }
+  .calc-btn.equals { background: var(--red); color: white; }
+  .calc-btn.equals:active { background: var(--red-dark); }
+
+  /* ===== GAME SPACE ===== */
+  .gamespace-bg {
+    background: linear-gradient(135deg, #050010 0%, #100005 100%);
+    padding: 20px;
+    min-height: 100%;
+  }
+  .gs-header {
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    margin-bottom: 20px;
+  }
+  .gs-header span { color: var(--red); }
+  .gs-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .gs-stat {
+    background: rgba(255,0,0,0.08);
+    border: 1px solid rgba(255,0,0,0.2);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .gs-stat-label { font-size: 11px; color: rgba(255,255,255,0.5); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .gs-stat-value { font-family: 'Orbitron', monospace; font-size: 24px; font-weight: 700; color: var(--red); }
+  .gs-stat-unit { font-size: 12px; color: rgba(255,255,255,0.4); }
+  .gs-modes {
+    margin-bottom: 20px;
+  }
+  .gs-section-title { font-size: 13px; letter-spacing: 2px; color: rgba(255,255,255,0.5); text-transform: uppercase; margin-bottom: 10px; }
+  .gs-mode-btns { display: flex; gap: 8px; }
+  .gs-mode-btn {
+    flex: 1;
+    padding: 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: rgba(255,255,255,0.6);
+  }
+  .gs-mode-btn.active {
+    background: rgba(255,0,0,0.2);
+    border-color: var(--red);
+    color: white;
+    box-shadow: 0 0 10px rgba(255,0,0,0.3);
+  }
+  .gs-games-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .gs-game {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 14px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .gs-game:active { border-color: var(--red); background: rgba(255,0,0,0.1); }
+  .gs-game-icon { font-size: 28px; margin-bottom: 6px; }
+  .gs-game-name { font-size: 11px; color: rgba(255,255,255,0.7); font-weight: 600; }
+
+  /* ===== CAMERA APP ===== */
+  .camera-viewfinder {
+    background: #000;
+    height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  .camera-noise {
+    position: absolute;
+    inset: 0;
+    background: 
+      repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none;
+  }
+  .camera-corner {
+    position: absolute;
+    width: 60px; height: 60px;
+    border-color: rgba(255,0,0,0.6);
+    border-style: solid;
+    border-width: 0;
+  }
+  .camera-corner.tl { top: 20px; left: 20px; border-top-width: 3px; border-left-width: 3px; border-top-left-radius: 4px; }
+  .camera-corner.tr { top: 20px; right: 20px; border-top-width: 3px; border-right-width: 3px; border-top-right-radius: 4px; }
+  .camera-corner.bl { bottom: 20px; left: 20px; border-bottom-width: 3px; border-left-width: 3px; border-bottom-left-radius: 4px; }
+  .camera-corner.br { bottom: 20px; right: 20px; border-bottom-width: 3px; border-right-width: 3px; border-bottom-right-radius: 4px; }
+  .camera-placeholder { font-size: 60px; opacity: 0.3; }
+  .camera-placeholder-text { color: rgba(255,255,255,0.3); font-size: 14px; letter-spacing: 2px; }
+  .camera-fps {
+    position: absolute;
+    top: 10px; right: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--red);
+    background: rgba(0,0,0,0.5);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .camera-controls {
+    background: #0a0a0a;
+    padding: 20px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex: 1;
+  }
+  .camera-mode-btn {
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 20px;
+    transition: all 0.15s;
+  }
+  .camera-mode-btn.active { color: white; background: rgba(255,0,0,0.2); border: 1px solid rgba(255,0,0,0.4); }
+  .camera-shutter {
+    width: 70px; height: 70px;
+    border: 3px solid white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .camera-shutter:active { transform: scale(0.9); }
+  .camera-shutter-inner { width: 56px; height: 56px; background: white; border-radius: 50%; }
+
+  /* ===== SETTINGS ===== */
+  .settings-content { padding: 16px; }
+  .settings-section { margin-bottom: 24px; }
+  .settings-section-title {
+    font-size: 11px; letter-spacing: 3px; color: var(--red);
+    text-transform: uppercase; margin-bottom: 10px;
+    font-family: 'Orbitron', monospace;
+  }
+  .settings-item {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .settings-item:active { background: rgba(255,255,255,0.08); }
+  .settings-item-left { display: flex; align-items: center; gap: 12px; }
+  .settings-item-icon { font-size: 20px; width: 32px; text-align: center; }
+  .settings-item-label { font-size: 15px; font-weight: 600; }
+  .settings-item-sub { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 1px; }
+  .settings-item-right { color: rgba(255,255,255,0.3); font-size: 12px; }
+
+  .toggle {
+    width: 46px; height: 26px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 13px;
+    position: relative;
+    transition: background 0.2s;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .toggle.on { background: var(--red); box-shadow: 0 0 8px var(--red-glow); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 22px; height: 22px;
+    background: white;
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    transition: left 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .toggle.on::after { left: 22px; }
+
+  /* ===== BROWSER ===== */
+  .browser-bar {
+    background: rgba(255,255,255,0.05);
+    padding: 10px 16px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .browser-input {
+    flex: 1;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    color: white;
+    outline: none;
+  }
+  .browser-input::placeholder { color: rgba(255,255,255,0.3); }
+  .browser-go {
+    background: var(--red);
+    border: none;
+    border-radius: 20px;
+    padding: 8px 16px;
+    color: white;
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    letter-spacing: 1px;
+  }
+  .browser-content { padding: 20px; }
+  .browser-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .browser-tile {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 14px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .browser-tile:active { border-color: var(--red); }
+  .browser-tile-icon { font-size: 26px; margin-bottom: 6px; }
+  .browser-tile-name { font-size: 11px; color: rgba(255,255,255,0.6); }
+
+  /* ===== GALLERY ===== */
+  .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+  .gallery-item {
+    aspect-ratio: 1;
+    background: rgba(255,255,255,0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: filter 0.15s;
+  }
+  .gallery-item:active { filter: brightness(0.7); }
+  .gallery-label {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+    padding: 16px 6px 6px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.6);
+    text-align: center;
+  }
+
+  /* ===== MUSIC ===== */
+  .music-content { padding: 20px; }
+  .music-now-playing {
+    background: linear-gradient(135deg, rgba(255,0,0,0.15), rgba(0,0,50,0.5));
+    border: 1px solid rgba(255,0,0,0.2);
+    border-radius: 20px;
+    padding: 24px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .music-album-art { font-size: 80px; margin-bottom: 16px; }
+  .music-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .music-artist { color: rgba(255,255,255,0.5); font-size: 14px; margin-bottom: 20px; }
+  .music-progress { background: rgba(255,255,255,0.1); height: 4px; border-radius: 2px; margin-bottom: 8px; position: relative; }
+  .music-progress-fill { height: 100%; background: var(--red); border-radius: 2px; width: 35%; box-shadow: 0 0 8px var(--red-glow); }
+  .music-times { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 20px; font-family: 'Share Tech Mono', monospace; }
+  .music-controls { display: flex; justify-content: center; gap: 32px; align-items: center; }
+  .music-btn { font-size: 24px; cursor: pointer; color: rgba(255,255,255,0.7); transition: all 0.15s; }
+  .music-btn.main { font-size: 36px; color: white; }
+  .music-btn:active { color: var(--red); transform: scale(0.9); }
+  .music-list { display: flex; flex-direction: column; gap: 8px; }
+  .music-item { display: flex; align-items: center; gap: 12px; padding: 10px; background: rgba(255,255,255,0.04); border-radius: 12px; cursor: pointer; transition: background 0.15s; }
+  .music-item:active { background: rgba(255,0,0,0.1); }
+  .music-item-icon { font-size: 28px; }
+  .music-item-info { flex: 1; }
+  .music-item-title { font-size: 14px; font-weight: 600; }
+  .music-item-artist { font-size: 12px; color: rgba(255,255,255,0.4); }
+  .music-item-dur { font-size: 12px; color: rgba(255,255,255,0.4); font-family: 'Share Tech Mono', monospace; }
+
+  /* ===== MESSAGES ===== */
+  .messages-list { padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .message-thread { display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(255,255,255,0.04); border-radius: 14px; cursor: pointer; transition: background 0.15s; }
+  .message-thread:active { background: rgba(255,0,0,0.1); }
+  .message-avatar { width: 46px; height: 46px; border-radius: 50%; background: rgba(255,0,0,0.2); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; border: 2px solid rgba(255,0,0,0.3); }
+  .message-info { flex: 1; }
+  .message-name { font-size: 15px; font-weight: 700; }
+  .message-preview { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+  .message-time { font-size: 11px; color: rgba(255,255,255,0.3); font-family: 'Share Tech Mono', monospace; }
+  .message-unread { width: 8px; height: 8px; background: var(--red); border-radius: 50%; box-shadow: 0 0 5px var(--red-glow); flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<!-- ===== PHYSICAL BUTTONS ===== -->
+<div class="side-btn btn-volume" title="Volume"></div>
+<div class="side-btn btn-power" onclick="showRestartMenu()" title="Power"></div>
+
+<!-- ===== RESTART MENU ===== -->
+<div id="restart-menu">
+  <div class="restart-panel">
+    <div class="restart-title">Power Options</div>
+    <div class="restart-icon">🔄</div>
+    <button class="restart-btn" onclick="doRestart()">RESTART</button>
+    <button class="restart-cancel" onclick="hideRestartMenu()">Cancel</button>
+  </div>
+</div>
+
+<!-- ===== BOOT SCREEN ===== -->
+<div class="screen active" id="boot">
+  <div class="boot-device-label">11 AIR</div>
+  <div class="boot-logo-wrap">
+    <div class="boot-logo">RedMagic</div>
+    <div class="boot-wordmark">REDMAGIC</div>
+  </div>
+  <div class="boot-bar-wrap">
+    <div class="boot-bar"></div>
+  </div>
+</div>
+
+<!-- ===== LOCKSCREEN ===== -->
+<div class="screen" id="lockscreen">
+  <div class="ls-bg-grid"></div>
+  <div class="ls-glow-orb"></div>
+  <div class="ls-device-name">RedMagic 11 AIR</div>
+  <div class="ls-time" id="ls-time">--:--</div>
+  <div class="ls-date" id="ls-date">Loading...</div>
+  <div class="ls-notifications">
+    <div class="ls-notif">
+      <div class="ls-notif-icon" style="background:rgba(0,200,255,0.2);">💬</div>
+      <div class="ls-notif-text">
+        <div class="ls-notif-title">Messages</div>
+        <div class="ls-notif-body">Hey, you ready for the match tonight?</div>
+      </div>
+    </div>
+    <div class="ls-notif">
+      <div class="ls-notif-icon" style="background:rgba(255,0,0,0.2);">🎮</div>
+      <div class="ls-notif-text">
+        <div class="ls-notif-title">Game Space</div>
+        <div class="ls-notif-body">Performance mode activated — 165Hz unlocked</div>
+      </div>
+    </div>
+  </div>
+  <div class="ls-unlock-hint" onclick="unlockPhone()">
+    <div class="ls-unlock-icon">🔓</div>
+    <div class="ls-unlock-text">SWIPE UP TO UNLOCK</div>
+  </div>
+</div>
+
+<!-- ===== HOME SCREEN ===== -->
+<div class="screen" id="homescreen">
+  <div class="hs-bg-effect"></div>
+  <div class="status-bar">
+    <div class="device-model">11 AIR</div>
+    <div id="hs-time-status" style="font-size:13px;">12:00</div>
+    <div class="status-icons">
+      <span>▲</span>
+      <span>WiFi</span>
+      <span style="color:var(--red);">●●●</span>
+      <span>🔋</span>
+    </div>
+  </div>
+  <div class="hs-time-widget">
+    <div class="hs-time" id="hs-time">--:--</div>
+    <div class="hs-date" id="hs-date">Loading...</div>
+  </div>
+  <div class="hs-accent-line"></div>
+
+  <div class="app-grid">
+    <div class="app-icon" onclick="openApp('camera')">
+      <div class="app-icon-img" style="background:linear-gradient(135deg,#1a1a1a,#333);">📷</div>
+      <div class="app-icon-label">Camera</div>
+    </div>
+    <div class="app-icon" onclick="openApp('gallery')">
+      <div class="app-icon-img" style="background:linear-gradient(135deg,#0d0030,#1a0060);">🖼️</div>
+      <div class="app-icon-label">Gallery</div>
+    </div>
+    <div class="app-icon" onclick="openApp('music')">
+      <div class="app-icon-img" style="background:linear-gradient(135deg,#1a0000,#400010);">🎵</div>
+      <div class="app-icon-label">Music</div>
+    </div>
+    <div class="app-icon" onclick="openApp('messages')">
+      <div class="app-icon-img" style="background:linear-gradient(135deg,#001a20,#003040);">💬</div>
+      <div class="app-icon-label">Messages</div>
+    </div>
+    <div class="app-icon" onclick="openApp('gamespace')">
+      <div class="app-icon-img" style="background:linear-gradient(135deg,#1a0000,#330000);">🎮</div>
+      <div class="app-icon-label">Game Space</div>
+    </div>
+    <div class="app-icon" onclick="openApp('calculator')">
+      <div class="app-icon-img" style="background:linear-gradient(135deg,#111,#222);">🧮</div>
+      <div class="app-icon-label">Calculator</div>
+    </div>
+    <div class="app-icon" onclick="openApp('browser')">
+      <div class="app-icon-img" style="background:linear-gradient(135deg,#001020,#002040);">🌐</div>
+      <div class="app-icon-label">Browser</div>
+    </div>
+    <div class="app-icon" onclick="openApp('settings')">
+      <div class="app-icon-img" style="background:linear-gradient(135deg,#0d0d0d,#1a1a1a);">⚙️</div>
+      <div class="app-icon-label">Settings</div>
+    </div>
+    <div class="app-icon" onclick="openApp('files')">
+      <div class="app-icon-img" style="background:linear-gradient(135deg,#1a1000,#332000);">📁</div>
+      <div class="app-icon-label">Files</div>
+    </div>
+    <div class="app-icon" onclick="openApp('weather')">
+      <div class="app-icon-img" style="background:linear-gradient(135deg,#000820,#001040);">🌤️</div>
+      <div class="app-icon-label">Weather</div>
+    </div>
+    <div class="app-icon" onclick="openApp('contacts')">
+      <div class="app-icon-img" style="background:linear-gradient(135deg,#001a00,#003000);">👤</div>
+      <div class="app-icon-label">Contacts</div>
+    </div>
+    <div class="app-icon" onclick="openApp('maps')">
+      <div class="app-icon-img" style="background:linear-gradient(135deg,#001510,#002a20);">🗺️</div>
+      <div class="app-icon-label">Maps</div>
+    </div>
+  </div>
+
+  <div class="hs-dock">
+    <div class="dock-icon" onclick="openApp('messages')">
+      <div class="dock-icon-img" style="background:linear-gradient(135deg,#001a20,#003040);">💬</div>
+    </div>
+    <div class="dock-icon" onclick="openApp('browser')">
+      <div class="dock-icon-img" style="background:linear-gradient(135deg,#001020,#002040);">🌐</div>
+    </div>
+    <div class="dock-icon" onclick="openApp('gamespace')">
+      <div class="dock-icon-img" style="background:linear-gradient(135deg,#1a0000,#330000);">🎮</div>
+    </div>
+    <div class="dock-icon" onclick="openApp('camera')">
+      <div class="dock-icon-img" style="background:linear-gradient(135deg,#1a1a1a,#333);">📷</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== APP WINDOW ===== -->
+<div id="app-window">
+  <div class="app-window-header">
+    <div class="app-back-btn" onclick="closeApp()">←</div>
+    <div class="app-window-title" id="app-title">APP</div>
+  </div>
+  <div class="app-window-content" id="app-content"></div>
+</div>
+
+<script>
+  // ===== POWER BUTTON =====
+  function showRestartMenu() {
+    document.getElementById('restart-menu').classList.add('active');
+  }
+  function hideRestartMenu() {
+    document.getElementById('restart-menu').classList.remove('active');
+  }
+  function doRestart() {
+    hideRestartMenu();
+    // Hide all screens
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('app-window').classList.remove('active');
+    // Show boot screen again
+    setTimeout(() => {
+      document.getElementById('boot').classList.add('active');
+    }, 300);
+    // Boot -> lockscreen again
+    setTimeout(() => {
+      document.getElementById('boot').classList.remove('active');
+      document.getElementById('lockscreen').classList.add('active');
+    }, 4500);
+  }
+  // Close restart menu on backdrop click
+  document.getElementById('restart-menu').addEventListener('click', function(e) {
+    if (e.target === this) hideRestartMenu();
+  });
+
+  // ===== TIME =====
+  function updateTime() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2,'0');
+    const m = now.getMinutes().toString().padStart(2,'0');
+    const time = `${h}:${m}`;
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const date = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`;
+    
+    const lsTime = document.getElementById('ls-time');
+    const lsDate = document.getElementById('ls-date');
+    const hsTime = document.getElementById('hs-time');
+    const hsDate = document.getElementById('hs-date');
+    const hsStat = document.getElementById('hs-time-status');
+    
+    if (lsTime) lsTime.textContent = time;
+    if (lsDate) lsDate.textContent = date;
+    if (hsTime) hsTime.textContent = time;
+    if (hsDate) hsDate.textContent = date;
+    if (hsStat) hsStat.textContent = time;
+  }
+  updateTime();
+  setInterval(updateTime, 10000);
+
+  // ===== BOOT -> LOCKSCREEN =====
+  setTimeout(() => {
+    document.getElementById('boot').classList.remove('active');
+    document.getElementById('lockscreen').classList.add('active');
+  }, 4200);
+
+  // ===== UNLOCK =====
+  function unlockPhone() {
+    document.getElementById('lockscreen').classList.remove('active');
+    document.getElementById('homescreen').classList.add('active');
+  }
+  // Swipe up on lockscreen
+  let touchStartY = 0;
+  document.getElementById('lockscreen').addEventListener('touchstart', e => {
+    touchStartY = e.touches[0].clientY;
+  });
+  document.getElementById('lockscreen').addEventListener('touchend', e => {
+    if (touchStartY - e.changedTouches[0].clientY > 80) unlockPhone();
+  });
+
+  // ===== APP CONTENTS =====
+  const apps = {
+    calculator: {
+      title: 'CALCULATOR',
+      html: () => `
+        <div style="display:flex;flex-direction:column;height:calc(100vh - 64px);">
+          <div class="calc-display">
+            <div class="calc-expression" id="calc-expr"></div>
+            <div class="calc-result" id="calc-res">0</div>
+          </div>
+          <div class="calc-btns" style="flex:1;">
+            ${[
+              ['C','action'],['±','action'],['%','action'],['÷','op'],
+              ['7',''],['8',''],['9',''],['×','op'],
+              ['4',''],['5',''],['6',''],['−','op'],
+              ['1',''],['2',''],['3',''],['+'   ,'op'],
+              ['0','wide'],['.','' ],['=','equals']
+            ].map(([b,cls]) => {
+              if (b === '0') return `<button class="calc-btn ${cls}" onclick="calcInput('0')" style="grid-column:span 2;">0</button>`;
+              return `<button class="calc-btn ${cls}" onclick="calcInput('${b}')">${b}</button>`;
+            }).join('')}
+          </div>
+        </div>
+      `
+    },
+    gamespace: {
+      title: 'GAME SPACE',
+      html: () => `
+        <div class="gamespace-bg">
+          <div class="gs-header"><span>GAME</span> SPACE</div>
+          <div class="gs-stats">
+            <div class="gs-stat">
+              <div class="gs-stat-label">CPU</div>
+              <div class="gs-stat-value">87<span class="gs-stat-unit">%</span></div>
+            </div>
+            <div class="gs-stat">
+              <div class="gs-stat-label">GPU</div>
+              <div class="gs-stat-value">72<span class="gs-stat-unit">%</span></div>
+            </div>
+            <div class="gs-stat">
+              <div class="gs-stat-label">FPS</div>
+              <div class="gs-stat-value" id="fps-counter">120</div>
+            </div>
+            <div class="gs-stat">
+              <div class="gs-stat-label">TEMP</div>
+              <div class="gs-stat-value">38<span class="gs-stat-unit">°C</span></div>
+            </div>
+          </div>
+          <div class="gs-modes">
+            <div class="gs-section-title">Performance Mode</div>
+            <div class="gs-mode-btns">
+              <div class="gs-mode-btn" onclick="selectMode(this)">BALANCE</div>
+              <div class="gs-mode-btn active" onclick="selectMode(this)">SPORT</div>
+              <div class="gs-mode-btn" onclick="selectMode(this)">BEAST</div>
+            </div>
+          </div>
+          <div>
+            <div class="gs-section-title">Recent Games</div>
+            <div class="gs-games-grid">
+              <div class="gs-game"><div class="gs-game-icon">⚔️</div><div class="gs-game-name">Arena</div></div>
+              <div class="gs-game"><div class="gs-game-icon">🔫</div><div class="gs-game-name">Shooter</div></div>
+              <div class="gs-game"><div class="gs-game-icon">🏎️</div><div class="gs-game-name">Racing</div></div>
+              <div class="gs-game"><div class="gs-game-icon">⚽</div><div class="gs-game-name">Football</div></div>
+              <div class="gs-game"><div class="gs-game-icon">🐉</div><div class="gs-game-name">RPG</div></div>
+              <div class="gs-game"><div class="gs-game-icon">🧩</div><div class="gs-game-name">Puzzle</div></div>
+            </div>
+          </div>
+        </div>
+      `
+    },
+    camera: {
+      title: 'CAMERA',
+      html: () => `
+        <div style="display:flex;flex-direction:column;height:calc(100vh - 64px);background:#000;">
+          <div class="camera-viewfinder">
+            <div class="camera-noise"></div>
+            <div class="camera-corner tl"></div>
+            <div class="camera-corner tr"></div>
+            <div class="camera-corner bl"></div>
+            <div class="camera-corner br"></div>
+            <div class="camera-fps">165 FPS</div>
+            <div class="camera-placeholder">📷</div>
+            <div class="camera-placeholder-text">CAMERA PREVIEW</div>
+          </div>
+          <div class="camera-controls">
+            <div class="camera-mode-btn">VIDEO</div>
+            <div class="camera-mode-btn active">PHOTO</div>
+            <div class="camera-shutter" onclick="this.style.transform='scale(0.9)';setTimeout(()=>this.style.transform='',150);">
+              <div class="camera-shutter-inner"></div>
+            </div>
+            <div class="camera-mode-btn">PRO</div>
+            <div class="camera-mode-btn">SLOW</div>
+          </div>
+        </div>
+      `
+    },
+    gallery: {
+      title: 'GALLERY',
+      html: () => `
+        <div class="gallery-grid">
+          ${['🌆','🎮','🏎️','🌃','⚔️','🌊','🔥','💫','🎯','🌌','⚡','🎪','🦅','🌋','🏔️','🌺','🎭','🦁'].map(e => `
+            <div class="gallery-item">
+              <span style="font-size:40px;">${e}</span>
+            </div>
+          `).join('')}
+        </div>
+      `
+    },
+    music: {
+      title: 'MUSIC',
+      html: () => `
+        <div class="music-content">
+          <div class="music-now-playing">
+            <div class="music-album-art">🎧</div>
+            <div class="music-title">Neon Warrior</div>
+            <div class="music-artist">RedMagic Beats</div>
+            <div class="music-progress"><div class="music-progress-fill"></div></div>
+            <div class="music-times"><span>1:24</span><span>4:02</span></div>
+            <div class="music-controls">
+              <div class="music-btn">⏮️</div>
+              <div class="music-btn main">⏸️</div>
+              <div class="music-btn">⏭️</div>
+            </div>
+          </div>
+          <div class="music-list">
+            ${[
+              ['🎵','Neon Warrior','RedMagic Beats','4:02'],
+              ['🎶','Cyber Drive','Techno Core','3:47'],
+              ['🎵','Red Zone','Bass Master','5:11'],
+              ['🎶','Glitch City','Digital Wave','3:29'],
+              ['🎵','RGB Flow','LED Audio','4:55'],
+            ].map(([icon,title,artist,dur]) => `
+              <div class="music-item">
+                <div class="music-item-icon">${icon}</div>
+                <div class="music-item-info">
+                  <div class="music-item-title">${title}</div>
+                  <div class="music-item-artist">${artist}</div>
+                </div>
+                <div class="music-item-dur">${dur}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `
+    },
+    messages: {
+      title: 'MESSAGES',
+      html: () => `
+        <div class="messages-list">
+          ${[
+            ['🤖','RedMagic Support','Your warranty is active ✓','Just now',true],
+            ['👤','Alex','bro your ping is crazy low','2m',true],
+            ['👾','GameBuddy','GG on that last match!','10m',false],
+            ['📢','RedMagic News','New update available: v9.5.1','1h',false],
+            ['👥','Squad Chat','Who\'s on tonight?','3h',false],
+          ].map(([icon,name,msg,time,unread]) => `
+            <div class="message-thread">
+              <div class="message-avatar">${icon}</div>
+              <div class="message-info">
+                <div class="message-name">${name}</div>
+                <div class="message-preview">${msg}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                <div class="message-time">${time}</div>
+                ${unread ? '<div class="message-unread"></div>' : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `
+    },
+    browser: {
+      title: 'BROWSER',
+      html: () => `
+        <div class="browser-bar">
+          <input class="browser-input" placeholder="Search or enter URL..." type="text" id="browser-url" />
+          <button class="browser-go" onclick="alert('Network disabled in demo')">GO</button>
+        </div>
+        <div class="browser-content">
+          <div style="font-size:12px;letter-spacing:2px;color:rgba(255,255,255,0.4);margin-bottom:14px;text-transform:uppercase;">Quick Access</div>
+          <div class="browser-tiles">
+            ${[['🔴','RedMagic'],['🔍','Google'],['🎮','Steam'],['📺','YouTube'],['🐦','X'],['📰','News']].map(([icon,name]) => `
+              <div class="browser-tile"><div class="browser-tile-icon">${icon}</div><div class="browser-tile-name">${name}</div></div>
+            `).join('')}
+          </div>
+        </div>
+      `
+    },
+    settings: {
+      title: 'SETTINGS',
+      html: () => `
+        <div class="settings-content">
+          <div class="settings-section">
+            <div class="settings-section-title">Display & Performance</div>
+            <div class="settings-item"><div class="settings-item-left"><div class="settings-item-icon">📱</div><div><div class="settings-item-label">Refresh Rate</div><div class="settings-item-sub">165Hz Pro Touch</div></div></div><div class="settings-item-right">165Hz ›</div></div>
+            <div class="settings-item"><div class="settings-item-left"><div class="settings-item-icon">🌟</div><div><div class="settings-item-label">Brightness</div></div></div><div class="settings-item-right">Auto ›</div></div>
+            <div class="settings-item"><div class="settings-item-left"><div class="settings-item-icon">💡</div><div><div class="settings-item-label">RGB Lighting</div></div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-section-title">Gaming</div>
+            <div class="settings-item"><div class="settings-item-left"><div class="settings-item-icon">⚡</div><div><div class="settings-item-label">Beast Mode</div><div class="settings-item-sub">Max CPU & GPU</div></div></div><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+            <div class="settings-item"><div class="settings-item-left"><div class="settings-item-icon">🎮</div><div><div class="settings-item-label">Shoulder Triggers</div></div></div><div class="settings-item-right">Enabled ›</div></div>
+            <div class="settings-item"><div class="settings-item-left"><div class="settings-item-icon">🔇</div><div><div class="settings-item-label">Do Not Disturb (Gaming)</div></div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-section-title">System</div>
+            <div class="settings-item"><div class="settings-item-left"><div class="settings-item-icon">🔋</div><div><div class="settings-item-label">Battery</div><div class="settings-item-sub">87% — Fast Charge 65W</div></div></div><div class="settings-item-right">›</div></div>
+            <div class="settings-item"><div class="settings-item-left"><div class="settings-item-icon">📶</div><div><div class="settings-item-label">Wi-Fi</div></div></div><div class="settings-item-right">Connected ›</div></div>
+            <div class="settings-item"><div class="settings-item-left"><div class="settings-item-icon">ℹ️</div><div><div class="settings-item-label">About Device</div><div class="settings-item-sub">RedMagic 11 AIR — v9.5.1</div></div></div><div class="settings-item-right">›</div></div>
+          </div>
+        </div>
+      `
+    },
+    files: {
+      title: 'FILES',
+      html: () => `
+        <div style="padding:16px;">
+          ${['Downloads','Documents','Pictures','Music','Videos','RedMagic'].map(folder => `
+            <div class="settings-item">
+              <div class="settings-item-left">
+                <div class="settings-item-icon">📁</div>
+                <div><div class="settings-item-label">${folder}</div></div>
+              </div>
+              <div class="settings-item-right">›</div>
+            </div>
+          `).join('')}
+        </div>
+      `
+    },
+    weather: {
+      title: 'WEATHER',
+      html: () => `
+        <div style="padding:24px;text-align:center;">
+          <div style="font-size:80px;margin-bottom:8px;">⛅</div>
+          <div style="font-family:'Orbitron',monospace;font-size:64px;font-weight:900;color:white;">24°</div>
+          <div style="font-size:18px;color:rgba(255,255,255,0.6);margin-bottom:4px;">Partly Cloudy</div>
+          <div style="font-size:14px;color:var(--red);letter-spacing:2px;margin-bottom:30px;">YOUR CITY</div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
+            ${['Mon','Tue','Wed','Thu','Fri'].map((day,i) => `
+              <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:10px 4px;text-align:center;">
+                <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:6px;">${day}</div>
+                <div style="font-size:20px;margin-bottom:6px;">${['🌤️','☀️','🌧️','⛅','☀️'][i]}</div>
+                <div style="font-size:13px;font-weight:700;">${[24,27,19,22,26][i]}°</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `
+    },
+    contacts: {
+      title: 'CONTACTS',
+      html: () => `
+        <div class="messages-list">
+          ${[['A','Alex','Gaming Partner'],['J','Jordan','RedMagic Team'],['S','Sam','Stream Crew'],['M','Mike','IRL Friend'],['R','RedMagic','Support'],['Z','Zara','Squad Mate']].map(([init,name,role]) => `
+            <div class="message-thread">
+              <div class="message-avatar" style="background:rgba(${Math.floor(Math.random()*255)},0,${Math.floor(Math.random()*100)},0.3);font-family:'Orbitron',monospace;font-size:18px;">${init}</div>
+              <div class="message-info">
+                <div class="message-name">${name}</div>
+                <div class="message-preview">${role}</div>
+              </div>
+              <div style="color:rgba(255,255,255,0.3);font-size:18px;">📞</div>
+            </div>
+          `).join('')}
+        </div>
+      `
+    },
+    maps: {
+      title: 'MAPS',
+      html: () => `
+        <div style="height:calc(100vh - 64px);background:#0a0a1a;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;position:relative;overflow:hidden;">
+          <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,0,0,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(255,0,0,0.07) 1px,transparent 1px);background-size:30px 30px;"></div>
+          <div style="font-size:60px;z-index:1;">🗺️</div>
+          <div style="font-family:'Orbitron',monospace;font-size:14px;letter-spacing:3px;color:rgba(255,255,255,0.5);z-index:1;">NAVIGATION READY</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.3);z-index:1;">Location services active</div>
+        </div>
+      `
+    }
+  };
+
+  // ===== OPEN/CLOSE APP =====
+  function openApp(id) {
+    const app = apps[id];
+    if (!app) return;
+    document.getElementById('app-title').textContent = app.title;
+    document.getElementById('app-content').innerHTML = app.html();
+    const win = document.getElementById('app-window');
+    win.classList.add('active');
+    // Re-init calc state if needed
+    if (id === 'calculator') initCalc();
+  }
+
+  function closeApp() {
+    const win = document.getElementById('app-window');
+    win.style.animation = 'slideDown 0.25s cubic-bezier(0.16,1,0.3,1) forwards';
+    setTimeout(() => {
+      win.classList.remove('active');
+      win.style.animation = '';
+    }, 250);
+  }
+
+  // ===== CALCULATOR LOGIC =====
+  let calcValue = '0', calcExpr = '', calcOp = null, calcPrev = null, calcNewNum = false;
+
+  function initCalc() {
+    calcValue = '0'; calcExpr = ''; calcOp = null; calcPrev = null; calcNewNum = false;
+    updateCalcDisplay();
+  }
+
+  function updateCalcDisplay() {
+    const res = document.getElementById('calc-res');
+    const expr = document.getElementById('calc-expr');
+    if (res) res.textContent = calcValue;
+    if (expr) expr.textContent = calcExpr;
+  }
+
+  function calcInput(btn) {
+    if (btn === 'C') { initCalc(); return; }
+    if (btn === '±') { calcValue = (parseFloat(calcValue) * -1).toString(); updateCalcDisplay(); return; }
+    if (btn === '%') { calcValue = (parseFloat(calcValue) / 100).toString(); updateCalcDisplay(); return; }
+    if (['÷','×','−','+'].includes(btn)) {
+      calcPrev = parseFloat(calcValue);
+      calcOp = btn;
+      calcExpr = calcValue + ' ' + btn;
+      calcNewNum = true;
+      updateCalcDisplay();
+      return;
+    }
+    if (btn === '=') {
+      if (calcOp && calcPrev !== null) {
+        const cur = parseFloat(calcValue);
+        let result;
+        if (calcOp === '+') result = calcPrev + cur;
+        else if (calcOp === '−') result = calcPrev - cur;
+        else if (calcOp === '×') result = calcPrev * cur;
+        else if (calcOp === '÷') result = cur === 0 ? 'Error' : calcPrev / cur;
+        calcExpr = calcExpr + ' ' + cur + ' =';
+        calcValue = result.toString();
+        calcOp = null; calcPrev = null; calcNewNum = true;
+        updateCalcDisplay();
+      }
+      return;
+    }
+    if (btn === '.') {
+      if (calcNewNum) { calcValue = '0.'; calcNewNum = false; }
+      else if (!calcValue.includes('.')) calcValue += '.';
+      updateCalcDisplay();
+      return;
+    }
+    // digit
+    if (calcNewNum) { calcValue = btn; calcNewNum = false; }
+    else calcValue = calcValue === '0' ? btn : calcValue + btn;
+    if (calcValue.length > 10) calcValue = calcValue.slice(0, 10);
+    updateCalcDisplay();
+  }
+
+  // ===== GAME SPACE MODE =====
+  function selectMode(el) {
+    document.querySelectorAll('.gs-mode-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  // ===== FPS COUNTER ANIMATION =====
+  setInterval(() => {
+    const el = document.getElementById('fps-counter');
+    if (el) el.textContent = (115 + Math.floor(Math.random() * 10)).toString();
+  }, 2000);
+</script>
+</body>
+</html>
